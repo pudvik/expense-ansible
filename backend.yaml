@@ -1,6 +1,13 @@
 - name: configuring backend server
   hosts: backend
   become: yes
+  vars:
+    login_host: db.daws78s.site
+  vars_prompt:
+  - name: mysql_root_password
+    prompt: please enter MySQL root password
+    private: no
+
   tasks:
   - name: Disable nodejs
     ansible.builtin.command: dnf install mysql-server -y
@@ -10,8 +17,11 @@
     
   - name: install nodejs
     ansible.builtin.dnf:
-      name: nodejs
+      name: "{{ item }}"
       state: installed
+    loop:
+    - nodejs
+    - mysql
 
   - name: create user expense
     ansible.builtin.user:
@@ -42,6 +52,25 @@
     ansible.builtin.copy:
       src: backend.service
       dest: /etc/systemd/system/backend.service
+
+  - name: install python mysql dependencies
+    ansible.builtin.pip:
+      name:
+      - PyMySQL
+      - cryptography
+      executable: pip3.9 # pip3.11 if python version is 3.11
+      
+
+  - name: import data into mysql
+    community.mysql.mysql_db:
+      login_user: root
+      login_password: "{{ mysql_root_password }}"
+      login_host: "{{ login_host }}"
+      target: /app/schema/backend.sql
+      state: import
+      name: all
+
+
       
 
   
